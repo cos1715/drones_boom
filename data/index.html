@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ESP32: безпечна навчальна імітація</title>
+  </head>
+
+  <body>
+    <h1>ESP32: безпечна навчальна імітація</h1>
+    <p>Жодні виконавчі пристрої не підключаються: команда спрацювання лише змінює стан та LED/бузер.</p>
+
+    <button onclick="sendCommand('/start')">Start</button>
+    <button onclick="sendCommand('/stop')">Stop</button>
+    <button onclick="sendCommand('/trigger')">Імітація спрацювання</button>
+
+    <div id="state">Loading...</div>
+
+    <script>
+      async function sendCommand(path) {
+        const response = await fetch(path, {
+          method: "POST",
+        });
+
+        showState(await response.json());
+      }
+
+      async function loadState() {
+        const response = await fetch("/state");
+        showState(await response.json());
+      }
+
+      function showState(data) {
+        let text = `Стан: ${data.state}`;
+        if (data.state === "WAITING") text += `; до ARM: ${data.safetyRemainingSeconds} с`;
+        document.getElementById("state").innerText = text;
+      }
+
+      loadState();
+      setInterval(loadState, 1000);
+    </script>
+  </body>
+</html>
