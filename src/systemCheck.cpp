@@ -6,17 +6,118 @@
 SystemCheck::SystemCheck(HardwareManager &hardware, ConfigManager &config, SensorManager &sensors)
     : hardware(hardware), config(config), sensors(sensors) {}
 
-bool SystemCheck::runSelfTest()
+void SystemCheck::begin()
 {
-  bool fs = checkFilesystem();
-  bool configOk = checkConfig();
-  bool espId = checkEspId();
-  bool button = checkButton();
-  bool output = checkOutput();
-  bool sensors = checkSensors();
-  bool power = checkPower();
+  Serial.println("Starting self-test...");
+  checkState = CheckState::FILESYSTEM;
+  result = SystemCheckResult::RUNNING;
+}
 
-  return fs && configOk && espId && button && output && sensors && power;
+SystemCheckResult SystemCheck::update()
+{
+  if (checkState == CheckState::COMPLETE || checkState == CheckState::FAILED)
+  {
+    return result;
+  }
+
+  switch (checkState)
+  {
+  case CheckState::FILESYSTEM:
+    if (!checkFilesystem())
+    {
+      return fail(SystemCheckResult::FILESYSTEM_FAILED);
+    }
+    checkState = CheckState::CONFIG;
+    break;
+
+  case CheckState::CONFIG:
+    if (!checkConfig())
+    {
+      return fail(SystemCheckResult::CONFIG_FAILED);
+    }
+    checkState = CheckState::ESP_ID;
+    break;
+
+  case CheckState::ESP_ID:
+    if (!checkEspId())
+    {
+      return fail(SystemCheckResult::ESP_ID_FAILED);
+    }
+    checkState = CheckState::BUTTON;
+    break;
+
+  case CheckState::BUTTON:
+    if (!checkButton())
+    {
+      return fail(SystemCheckResult::BUTTON_FAILED);
+    }
+    checkState = CheckState::LED;
+    break;
+
+  case CheckState::LED:
+    if (!checkOutput())
+    {
+      return fail(SystemCheckResult::LED_FAILED);
+    }
+    checkState = CheckState::SENSORS;
+    break;
+
+  case CheckState::SENSORS:
+    if (!checkSensors())
+    {
+      return fail(SystemCheckResult::SENSOR_FAILED);
+    }
+    checkState = CheckState::POWER;
+    break;
+
+  case CheckState::POWER:
+    if (!checkPower())
+    {
+      return fail(SystemCheckResult::POWER_FAILED);
+    }
+    checkState = CheckState::COMPLETE;
+    result = SystemCheckResult::OK;
+    break;
+
+  default:
+    return fail(SystemCheckResult::FILESYSTEM_FAILED);
+  }
+
+  return result;
+}
+
+SystemCheckResult SystemCheck::fail(SystemCheckResult failure)
+{
+  checkState = CheckState::FAILED;
+  result = failure;
+  return result;
+}
+
+const char *SystemCheck::resultToString(SystemCheckResult result)
+{
+  switch (result)
+  {
+  case SystemCheckResult::RUNNING:
+    return "RUNNING";
+  case SystemCheckResult::OK:
+    return "OK";
+  case SystemCheckResult::FILESYSTEM_FAILED:
+    return "FILESYSTEM_FAILED";
+  case SystemCheckResult::CONFIG_FAILED:
+    return "CONFIG_FAILED";
+  case SystemCheckResult::ESP_ID_FAILED:
+    return "ESP_ID_FAILED";
+  case SystemCheckResult::BUTTON_FAILED:
+    return "BUTTON_FAILED";
+  case SystemCheckResult::LED_FAILED:
+    return "LED_FAILED";
+  case SystemCheckResult::SENSOR_FAILED:
+    return "SENSOR_FAILED";
+  case SystemCheckResult::POWER_FAILED:
+    return "POWER_FAILED";
+  }
+
+  return "UNKNOWN";
 }
 
 bool SystemCheck::checkFilesystem()

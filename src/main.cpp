@@ -22,23 +22,52 @@ ControlWebServer controlWebServer(
 
 bool prevButtonReleased = true;
 PwmCommand previousPwmCommand = PwmCommand::INVALID;
+bool startupReady = false;
+bool startupFailed = false;
 
 void setup()
 {
-  Serial.begin(115200);
-
   hardware.begin();
-
-  bool systemCheckResult = systemCheck.runSelfTest();
-  stateMachine.begin(systemCheckResult);
-
   pwmCommandReader.begin();
-  pwmTestGenerator.begin();
-  controlWebServer.begin();
+  pwmTestGenerator.prepare();
+
+  Serial.begin(115200);
+  systemCheck.begin();
 }
 
 void loop()
 {
+  if (!startupReady && !startupFailed)
+  {
+    const SystemCheckResult systemCheckResult = systemCheck.update();
+
+    if (systemCheckResult == SystemCheckResult::RUNNING)
+    {
+      return;
+    }
+
+    if (systemCheckResult != SystemCheckResult::OK)
+    {
+      stateMachine.begin(false);
+      Serial.print("Startup stopped: ");
+      Serial.println(SystemCheck::resultToString(systemCheckResult));
+      startupFailed = true;
+      return;
+    }
+
+    stateMachine.begin(true);
+    pwmTestGenerator.begin();
+    pwmTestGenerator.printReadyMessage();
+    controlWebServer.begin();
+    startupReady = true;
+  }
+
+  if (startupFailed)
+  {
+    hardware.updateIndicator(stateMachine.getCurrentState());
+    return;
+  }
+
   stateMachine.update();
   pwmTestGenerator.handleSerialInput();
 

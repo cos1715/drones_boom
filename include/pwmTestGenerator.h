@@ -9,7 +9,9 @@ public:
   static constexpr bool ENABLED = true;
   static constexpr uint8_t PWM_TEST_OUTPUT_PIN = 25;
 
+  void prepare();
   void begin();
+  void printReadyMessage() const;
   void setCommand(PwmCommand command);
   void handleSerialInput();
 

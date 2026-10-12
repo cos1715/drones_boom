@@ -1,5 +1,16 @@
 #include "pwmTestGenerator.h"
 
+void PwmTestGenerator::prepare()
+{
+  if (!ENABLED)
+  {
+    return;
+  }
+
+  pinMode(PWM_TEST_OUTPUT_PIN, OUTPUT);
+  digitalWrite(PWM_TEST_OUTPUT_PIN, LOW);
+}
+
 void PwmTestGenerator::begin()
 {
   if (!ENABLED)
@@ -10,6 +21,15 @@ void PwmTestGenerator::begin()
   ledcSetup(PWM_CHANNEL, FREQUENCY_HZ, RESOLUTION_BITS);
   ledcAttachPin(PWM_TEST_OUTPUT_PIN, PWM_CHANNEL);
   setCommand(PwmCommand::STOP);
+}
+
+void PwmTestGenerator::printReadyMessage() const
+{
+  if (!ENABLED)
+  {
+    return;
+  }
+
   Serial.println("PWM loopback test ready: connect GPIO25 to GPIO19; send 1, 2, or 3 in Serial Monitor.");
 }
 
